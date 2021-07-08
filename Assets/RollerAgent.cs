@@ -11,9 +11,9 @@ public class RollerAgent : Agent
     public Transform target;
     Rigidbody rBody;
 
-    public override void Initialize()
+    void Start()
     {
-        this.rBody = GetComponent<Rigidbody>();
+        rBody = GetComponent<Rigidbody>();
     }
 
     public override void OnEpisodeBegin()
@@ -22,17 +22,17 @@ public class RollerAgent : Agent
         {
             this.rBody.angularVelocity = Vector3.zero;
             this.rBody.velocity = Vector3.zero;
-            this.transform.position = new Vector3(0.0f, 0.5f, 0.0f);
+            this.transform.localPosition = new Vector3(0.0f, 0.5f, 0.0f);
         }
 
-        target.position = new Vector3(Random.value*8-4, 0.5f, Random.value*8-4);
+        target.localPosition = new Vector3(Random.value*8-4, 0.5f, Random.value*8-4);
         
     }
 
     public override void CollectObservations(VectorSensor sensor)
     {
-        sensor.AddObservation(target.position);
-        sensor.AddObservation(this.transform.position);
+        sensor.AddObservation(target.localPosition);
+        sensor.AddObservation(this.transform.localPosition);
         sensor.AddObservation(rBody.velocity.x);
         sensor.AddObservation(rBody.velocity.z);
     }
@@ -40,23 +40,30 @@ public class RollerAgent : Agent
     public override void OnActionReceived(ActionBuffers actionBuffers)
     {
         Vector3 controlSignal = Vector3.zero;
-        controlSignal.x = actionBuffers.DiscreteActions[0];
-        controlSignal.y = actionBuffers.DiscreteActions[1];
+        controlSignal.x = actionBuffers.ContinuousActions[0];
+        controlSignal.z = actionBuffers.ContinuousActions[1];
         rBody.AddForce(controlSignal * 10);
 
         float distanceToTarget = Vector3.Distance(
-            this.transform.position, target.position
+            this.transform.localPosition, target.localPosition
         );
 
         if (distanceToTarget < 1.42f)
         {
-            AddReward(1.0f);
+            SetReward(1.0f);
             EndEpisode();
         }
 
-        if (this.transform.position.y < 0)
+        if (this.transform.localPosition.y < 0)
         {
             EndEpisode();
         }
+    }
+
+    public override void Heuristic(in ActionBuffers actionsOut)
+    {
+        var continuousActionsOut = actionsOut.ContinuousActions;
+        continuousActionsOut[0] = Input.GetAxis("Horizontal");
+        continuousActionsOut[1] = Input.GetAxis("Vertical");
     }
 }
